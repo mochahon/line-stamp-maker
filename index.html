@@ -65,8 +65,17 @@
     </div>
     <div id="stampGrid" class="stamp-grid" aria-label="スタンプ一覧"></div>
     <p class="hint center">スタンプをタップすると編集できます。「並び替え」中はドラッグで順番を変えられます。</p>
-    <div class="row center">
+    <div class="row center gap">
       <button id="reorderBtn" type="button" class="btn small">⇅ 並び替えモード</button>
+      <button id="bulkBtn" type="button" class="btn small">🗑 まとめて削除</button>
+    </div>
+    <div id="bulkBar" class="card" hidden>
+      <p class="hint" style="margin-top:0">削除したいスタンプをタップして選んでください。</p>
+      <div class="row wrap gap">
+        <button id="bulkDeleteSelBtn" type="button" class="btn danger">選択した0個を削除</button>
+        <button id="bulkDeleteAllBtn" type="button" class="btn danger">すべて削除</button>
+        <button id="bulkCancelBtn" type="button" class="btn">キャンセル</button>
+      </div>
     </div>
   </section>
 

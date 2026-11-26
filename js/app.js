@@ -13,7 +13,9 @@
     stamps: [],
     selected: null,
     mainSource: 0,
-    reorder: false
+    reorder: false,
+    bulkMode: false,
+    bulkSel: {}
   };
   var brushMode = null; // 'erase' | 'restore' | null
   var activeTextId = null;
@@ -191,12 +193,19 @@
     state.stamps.forEach(function (st, i) {
       var btn = document.createElement('button');
       btn.type = 'button';
-      btn.className = 'slot' + (st ? ' filled' : '') + (state.selected === i ? ' selected' : '');
+      btn.className = 'slot' + (st ? ' filled' : '') + (state.selected === i ? ' selected' : '') +
+        (state.bulkSel[i] ? ' bulk-sel' : '');
       btn.dataset.index = i;
       var num = document.createElement('span');
       num.className = 'num';
       num.textContent = String(i + 1).padStart(2, '0');
       btn.appendChild(num);
+      if (state.bulkMode && state.bulkSel[i]) {
+        var badge = document.createElement('span');
+        badge.className = 'check-badge';
+        badge.textContent = '✓';
+        btn.appendChild(badge);
+      }
       if (st) {
         filled++;
         var img = document.createElement('img');
@@ -211,6 +220,14 @@
       }
       btn.addEventListener('click', function () {
         if (state.reorder) return;
+        if (state.bulkMode) {
+          if (!state.stamps[i]) return;
+          if (state.bulkSel[i]) delete state.bulkSel[i];
+          else state.bulkSel[i] = true;
+          syncBulkBar();
+          renderGrid();
+          return;
+        }
         if (st) openEditor(i);
         else { state.selected = i; $('fileInput').click(); }
       });
@@ -952,6 +969,31 @@
     });
   }
 
+  /* ---------------- bulk delete ---------------- */
+  function syncBulkBar() {
+    var n = Object.keys(state.bulkSel).length;
+    $('bulkDeleteSelBtn').textContent = '選択した' + n + '個を削除';
+    $('bulkDeleteSelBtn').disabled = n === 0;
+  }
+  function setBulkMode(on) {
+    state.bulkMode = on;
+    state.bulkSel = {};
+    $('bulkBar').hidden = !on;
+    $('bulkBtn').classList.toggle('active', on);
+    $('bulkBtn').textContent = on ? '✓ 削除モード中' : '🗑 まとめて削除';
+    syncBulkBar();
+    renderGrid();
+  }
+  function bulkDelete(indices, label) {
+    if (!indices.length) return;
+    if (!confirm(label + 'を削除しますか？この操作は取り消せません')) return;
+    indices.forEach(function (i) { state.stamps[i] = null; });
+    if (state.selected != null && indices.indexOf(state.selected) >= 0) state.selected = null;
+    setBulkMode(false);
+    scheduleSave();
+    toast(indices.length + '個のスタンプを削除しました');
+  }
+
   /* ---------------- wiring ---------------- */
   function bindAll() {
     document.querySelectorAll('.tabbar .tab').forEach(function (b) {
@@ -987,7 +1029,22 @@
       if (!f) return;
       E.loadImage(f).then(openSplit).catch(function () { toast('画像を読み込めませんでした'); });
     });
+    $('bulkBtn').addEventListener('click', function () {
+      if (state.reorder) $('reorderBtn').click();
+      setBulkMode(!state.bulkMode);
+    });
+    $('bulkCancelBtn').addEventListener('click', function () { setBulkMode(false); });
+    $('bulkDeleteSelBtn').addEventListener('click', function () {
+      var idx = Object.keys(state.bulkSel).map(Number);
+      bulkDelete(idx, '選択した' + idx.length + '個のスタンプ');
+    });
+    $('bulkDeleteAllBtn').addEventListener('click', function () {
+      var idx = [];
+      state.stamps.forEach(function (st, i) { if (st) idx.push(i); });
+      bulkDelete(idx, 'すべて（' + idx.length + '個）のスタンプ');
+    });
     $('reorderBtn').addEventListener('click', function () {
+      if (state.bulkMode) setBulkMode(false);
       state.reorder = !state.reorder;
       $('reorderBtn').classList.toggle('active', state.reorder);
       $('reorderBtn').textContent = state.reorder ? '✓ 並び替えを終わる' : '⇅ 並び替えモード';
