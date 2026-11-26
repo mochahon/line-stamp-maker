@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>スタンプメーカー | LINEスタンプ作成</title>
+<meta name="description" content="ブラウザだけでLINEスタンプが作れる無料アプリ。画像は端末内だけで処理され、外部に送信されません。">
+<meta name="theme-color" content="#ffd1dc">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="スタンプメーカー">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;800&family=Yomogi&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="updateBanner" class="update-banner" hidden>
+  <span>新しいバージョンがあります</span>
+  <button id="updateBtn" type="button">更新する</button>
+</div>
+
+<header class="app-header">
+  <div class="brand">
+    <img src="icons/icon-192.png" alt="" class="brand-icon">
+    <div>
+      <h1>スタンプメーカー</h1>
+      <p class="tagline">LINEスタンプをブラウザだけで</p>
+    </div>
+  </div>
+  <div class="header-actions">
+    <button id="themeBtn" type="button" class="icon-btn" aria-label="ダークモード切り替え">🌙</button>
+    <button id="helpBtn" type="button" class="icon-btn" aria-label="使い方">？</button>
+  </div>
+</header>
+
+<main>
+  <!-- ===== セット画面 ===== -->
+  <section id="viewSet" class="view">
+    <div class="card">
+      <div class="row between wrap">
+        <label class="field inline">
+          <span>スタンプ数</span>
+          <select id="setSize">
+            <option value="8">8個</option>
+            <option value="16">16個</option>
+            <option value="24" selected>24個</option>
+            <option value="32">32個</option>
+            <option value="40">40個</option>
+          </select>
+        </label>
+        <span id="setProgress" class="muted"></span>
+      </div>
+      <div class="row wrap gap">
+        <button id="addImagesBtn" type="button" class="btn primary">＋ 画像を追加</button>
+        <button id="splitBtn" type="button" class="btn">✂ シートを分割</button>
+        <button id="previewBtn" type="button" class="btn">💬 プレビュー</button>
+        <button id="gotoExportBtn" type="button" class="btn accent">⬇ 出力へ</button>
+      </div>
+      <p class="hint">画像はこの端末の中だけで処理されます。外部サーバーへは送信されません。</p>
+    </div>
+    <div id="stampGrid" class="stamp-grid" aria-label="スタンプ一覧"></div>
+    <p class="hint center">スタンプをタップすると編集できます。「並び替え」中はドラッグで順番を変えられます。</p>
+    <div class="row center">
+      <button id="reorderBtn" type="button" class="btn small">⇅ 並び替えモード</button>
+    </div>
+  </section>
+
+  <!-- ===== 編集画面 ===== -->
+  <section id="viewEdit" class="view" hidden>
+    <div class="row between">
+      <button id="backToSetBtn" type="button" class="btn small">← セットに戻る</button>
+      <strong id="editTitle">スタンプ編集</strong>
+      <span class="row gap-s">
+        <button id="undoBtn" type="button" class="btn small">↩ 戻す</button>
+        <button id="redoBtn" type="button" class="btn small">↪ やり直す</button>
+      </span>
+    </div>
+
+    <div class="stage-wrap">
+      <canvas id="stage" width="370" height="320"></canvas>
+    </div>
+    <p class="hint center">画像はドラッグで移動、ピンチで拡大縮小できます。文字もドラッグで動かせます。</p>
+
+    <div class="card">
+      <h2>画像の調整</h2>
+      <div class="row wrap gap">
+        <button id="bgRemoveBtn" type="button" class="btn primary">背景を透過</button>
+        <label class="field inline grow">
+          <span>透過の強さ</span>
+          <input id="bgTolerance" type="range" min="0" max="100" value="32">
+        </label>
+      </div>
+      <div class="row wrap gap">
+        <button id="eraserBtn" type="button" class="btn toggle">消しゴム</button>
+        <button id="restoreBtn" type="button" class="btn toggle">復元ブラシ</button>
+        <label class="field inline grow">
+          <span>ブラシ</span>
+          <input id="brushSize" type="range" min="4" max="80" value="24">
+        </label>
+      </div>
+      <div class="row wrap gap">
+        <button id="trimBtn" type="button" class="btn">余白をカット</button>
+        <button id="centerBtn" type="button" class="btn">中央に配置</button>
+        <button id="resetImgBtn" type="button" class="btn danger">画像を元に戻す</button>
+      </div>
+      <label class="field">
+        <span>大きさ <output id="scaleOut">100%</output></span>
+        <input id="imgScale" type="range" min="20" max="300" value="100">
+      </label>
+      <label class="field">
+        <span>回転 <output id="rotOut">0°</output></span>
+        <input id="imgRot" type="range" min="-180" max="180" value="0">
+      </label>
+      <label class="field">
+        <span>余白（マージン） <output id="padOut">10px</output></span>
+        <input id="imgPad" type="range" min="0" max="40" value="10">
+      </label>
+    </div>
+
+    <div class="card">
+      <div class="row between">
+        <h2>文字入れ</h2>
+        <button id="addTextBtn" type="button" class="btn primary small">＋ 文字を追加</button>
+      </div>
+      <label class="field">
+        <span>よく使うセリフ</span>
+        <select id="phraseSel">
+          <option value="">（選ぶと文字を追加します）</option>
+        </select>
+      </label>
+      <div id="textList"></div>
+      <div id="textEditor" hidden>
+        <label class="field">
+          <span>テキスト</span>
+          <input id="tText" type="text" placeholder="例：ありがとう">
+        </label>
+        <div class="row wrap gap">
+          <label class="field grow">
+            <span>フォント</span>
+            <select id="tFont">
+              <option value="'M PLUS Rounded 1c',sans-serif">まるゴシック（太）</option>
+              <option value="'Yomogi',cursive">手書き風</option>
+              <option value="sans-serif">ゴシック</option>
+              <option value="serif">明朝</option>
+              <option value="'Hiragino Maru Gothic ProN',sans-serif">ヒラギノ丸ゴ</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>サイズ</span>
+            <input id="tSize" type="number" min="10" max="120" value="44">
+          </label>
+        </div>
+        <div class="row wrap gap">
+          <label class="field">
+            <span>文字色</span>
+            <input id="tColor" type="color" value="#333333">
+          </label>
+          <label class="field">
+            <span>縁取り色</span>
+            <input id="tStrokeColor" type="color" value="#ffffff">
+          </label>
+          <label class="field grow">
+            <span>縁取りの太さ</span>
+            <input id="tStroke" type="range" min="0" max="20" value="6">
+          </label>
+        </div>
+        <div class="row wrap gap">
+          <label class="check"><input id="tShadow" type="checkbox" checked> 影をつける</label>
+          <label class="check"><input id="tVertical" type="checkbox"> 縦書き</label>
+          <label class="field grow">
+            <span>回転</span>
+            <input id="tRot" type="range" min="-90" max="90" value="0">
+          </label>
+        </div>
+        <div class="row">
+          <button id="delTextBtn" type="button" class="btn danger small">この文字を削除</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 出力画面 ===== -->
+  <section id="viewExport" class="view" hidden>
+    <div class="row between">
+      <button id="backFromExportBtn" type="button" class="btn small">← セットに戻る</button>
+      <strong>出力と保存</strong>
+      <span></span>
+    </div>
+
+    <div class="card">
+      <h2>自動チェック</h2>
+      <ul id="checkList" class="check-list"></ul>
+    </div>
+
+    <div class="card">
+      <h2>メイン画像・タブ画像</h2>
+      <label class="field">
+        <span>元にするスタンプ</span>
+        <select id="mainSourceSel"></select>
+      </label>
+      <div class="row gap center">
+        <figure class="mini-fig">
+          <canvas id="mainCanvas" width="240" height="240"></canvas>
+          <figcaption>メイン 240×240</figcaption>
+        </figure>
+        <figure class="mini-fig">
+          <canvas id="tabCanvas" width="96" height="74"></canvas>
+          <figcaption>タブ 96×74</figcaption>
+        </figure>
+      </div>
+      <div class="row wrap gap">
+        <button id="dlMainBtn" type="button" class="btn">メイン画像を保存</button>
+        <button id="dlTabBtn" type="button" class="btn">タブ画像を保存</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>スタンプの保存</h2>
+      <div class="row wrap gap">
+        <button id="dlOneBtn" type="button" class="btn">選んだ1個を保存</button>
+        <label class="field inline">
+          <span>番号</span>
+          <select id="dlOneSel"></select>
+        </label>
+      </div>
+      <div class="row wrap gap">
+        <button id="dlZipBtn" type="button" class="btn primary">📦 LINE申請用ZIPを作成</button>
+        <button id="shareZipBtn" type="button" class="btn">共有する</button>
+      </div>
+      <p class="hint">ZIPには 01.png〜（スタンプ）、main.png、tab.png が入ります。そのままLINE Creators Marketにアップロードできます。</p>
+    </div>
+
+    <div class="card">
+      <h2>プロジェクト</h2>
+      <p class="hint">編集中のデータはこの端末に自動保存されています。念のため、ときどきバックアップを書き出してください。</p>
+      <div class="row wrap gap">
+        <button id="projExportBtn" type="button" class="btn">バックアップを書き出す</button>
+        <button id="projImportBtn" type="button" class="btn">バックアップを読み込む</button>
+        <button id="projClearBtn" type="button" class="btn danger">すべて消去</button>
+      </div>
+      <p id="saveState" class="muted"></p>
+    </div>
+  </section>
+</main>
+
+<nav class="tabbar">
+  <button type="button" data-view="viewSet" class="tab active">🎨 セット</button>
+  <button type="button" data-view="viewEdit" class="tab" id="tabEdit" disabled>✏️ 編集</button>
+  <button type="button" data-view="viewExport" class="tab">⬇ 出力</button>
+</nav>
+
+<!-- ===== 分割モーダル ===== -->
+<div id="splitModal" class="modal" hidden>
+  <div class="modal-sheet">
+    <div class="row between">
+      <strong>シートを分割</strong>
+      <button id="splitCloseBtn" type="button" class="icon-btn" aria-label="閉じる">✕</button>
+    </div>
+    <p class="hint">表情集・ポーズ集のような1枚絵を、キャラごとに切り分けます。線はドラッグで調整できます。</p>
+    <div class="split-stage">
+      <canvas id="splitCanvas"></canvas>
+    </div>
+    <div class="row wrap gap">
+      <label class="field inline"><span>行</span>
+        <input id="splitRows" type="number" min="1" max="12" value="4"></label>
+      <label class="field inline"><span>列</span>
+        <input id="splitCols" type="number" min="1" max="12" value="4"></label>
+      <button id="splitAutoBtn" type="button" class="btn">自動で検出</button>
+      <button id="splitEvenBtn" type="button" class="btn">均等に配置</button>
+    </div>
+    <label class="check"><input id="splitBgChk" type="checkbox" checked> 分割後に背景を透過する</label>
+    <label class="check"><input id="splitTrimChk" type="checkbox" checked> 余白を自動でカットする</label>
+    <div class="row gap">
+      <button id="splitApplyBtn" type="button" class="btn primary grow">この内容で分割する</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== プレビューモーダル ===== -->
+<div id="previewModal" class="modal" hidden>
+  <div class="modal-sheet">
+    <div class="row between">
+      <strong>トーク画面プレビュー</strong>
+      <button id="previewCloseBtn" type="button" class="icon-btn" aria-label="閉じる">✕</button>
+    </div>
+    <div class="row gap">
+      <button id="pvLightBtn" type="button" class="btn small toggle active">明るい背景</button>
+      <button id="pvDarkBtn" type="button" class="btn small toggle">暗い背景</button>
+    </div>
+    <div id="chatMock" class="chat-mock light">
+      <div class="chat-head">🐰 トーク</div>
+      <div id="chatBody" class="chat-body"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== ヘルプモーダル ===== -->
+<div id="helpModal" class="modal" hidden>
+  <div class="modal-sheet">
+    <div class="row between">
+      <strong>使い方・ガイドライン</strong>
+      <button id="helpCloseBtn" type="button" class="icon-btn" aria-label="閉じる">✕</button>
+    </div>
+    <div class="help-body">
+      <h3>基本の流れ</h3>
+      <ol>
+        <li>「画像を追加」でイラストを読み込む（複数可）</li>
+        <li>1枚に複数キャラがいる絵は「シートを分割」</li>
+        <li>スタンプをタップして編集（背景透過・文字入れ）</li>
+        <li>「出力」からチェックを確認してZIPを保存</li>
+        <li>LINE Creators MarketにZIPをアップロードして申請</li>
+      </ol>
+      <h3>iPhone・iPadにインストール</h3>
+      <ol>
+        <li>Safariでこのページを開く</li>
+        <li>下部の共有ボタン（□に↑）をタップ</li>
+        <li>「ホーム画面に追加」を選ぶ</li>
+        <li>ホーム画面のアイコンから起動すると全画面で使えます</li>
+      </ol>
+      <h3>LINE公式の規格（静止画スタンプ）</h3>
+      <ul>
+        <li>スタンプ画像：最大370×320px、PNG、背景透過、1個1MB以下</li>
+        <li>個数：8・16・24・32・40個</li>
+        <li>メイン画像：240×240px／タブ画像：96×74px</li>
+        <li>イラストの周りに10pxほどの余白、縦横は偶数px</li>
+        <li>ZIP全体で60MB以下</li>
+      </ul>
+      <p class="hint">出典：LINE Creators Market 制作ガイドライン（2026年11月に確認）。申請前に公式ページでも最新情報をご確認ください。</p>
+      <h3>プライバシー</h3>
+      <p>アップロードした画像は、お使いの端末のブラウザ内だけで処理されます。外部サーバーへの送信は一切ありません。編集データはこの端末のIndexedDBに保存されます。</p>
+      <h3>ライセンス</h3>
+      <p>このアプリはフリーソフトウェアのみで構成されています。フォント：M PLUS Rounded 1c / Yomogi（SIL Open Font License 1.1、Google Fonts経由で配信・キャッシュ）。その他は標準のWeb技術のみを使用しています。</p>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast" hidden></div>
+<input id="fileInput" type="file" accept="image/png,image/jpeg,image/webp" multiple hidden>
+<input id="sheetInput" type="file" accept="image/png,image/jpeg,image/webp" hidden>
+<input id="projInput" type="file" accept=".json,application/json" hidden>
+
+<script src="js/zip.js"></script>
+<script src="js/db.js"></script>
+<script src="js/editor.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
