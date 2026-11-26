@@ -584,6 +584,16 @@
       renderStage();
       scheduleSave();
     });
+    $('deleteStampBtn').addEventListener('click', function () {
+      var st = cur();
+      if (!st) return;
+      if (!confirm('このスタンプを削除しますか？（枠が空に戻ります）')) return;
+      state.stamps[state.selected] = null;
+      activeTextId = null;
+      scheduleSave();
+      showView('viewSet');
+      toast('スタンプを削除しました');
+    });
     $('imgScale').addEventListener('input', function () {
       var st = cur();
       if (!st) return;
