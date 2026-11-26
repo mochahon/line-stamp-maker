@@ -1,7 +1,7 @@
 /* Service Worker — offline support for the Stamp Maker.
  * Bump VERSION when app files change; old caches are cleaned on activate.
  * Project data lives in IndexedDB and is never touched by cache updates. */
-var VERSION = 'v3';
+var VERSION = 'v4';
 var STATIC_CACHE = 'stamp-maker-static-' + VERSION;
 var FONT_CACHE = 'stamp-maker-fonts-' + VERSION;
 

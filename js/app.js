@@ -1079,6 +1079,10 @@
   function registerSW() {
     if (!('serviceWorker' in navigator)) return;
     navigator.serviceWorker.register('sw.js').then(function (reg) {
+      // an update that finished installing in a previous session is already waiting
+      if (reg.waiting && navigator.serviceWorker.controller) {
+        $('updateBanner').hidden = false;
+      }
       reg.addEventListener('updatefound', function () {
         var nw = reg.installing;
         if (!nw) return;
@@ -1087,6 +1091,12 @@
             $('updateBanner').hidden = false;
           }
         });
+      });
+      // iOS standalone apps check for updates lazily; ask explicitly on
+      // launch and whenever the app comes back to the foreground.
+      if (reg.update) reg.update().catch(function () {});
+      document.addEventListener('visibilitychange', function () {
+        if (!document.hidden && reg.update) reg.update().catch(function () {});
       });
     }).catch(function () {});
     var refreshing = false;
