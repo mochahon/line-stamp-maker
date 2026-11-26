@@ -1,7 +1,7 @@
 /* Service Worker — offline support for the Stamp Maker.
  * Bump VERSION when app files change; old caches are cleaned on activate.
  * Project data lives in IndexedDB and is never touched by cache updates. */
-var VERSION = 'v1';
+var VERSION = 'v2';
 var STATIC_CACHE = 'stamp-maker-static-' + VERSION;
 var FONT_CACHE = 'stamp-maker-fonts-' + VERSION;
 
@@ -14,11 +14,11 @@ var APP_SHELL = [
   'js/editor.js',
   'js/app.js',
   'manifest.webmanifest',
-  'icons/icon-192.png',
-  'icons/icon-512.png',
-  'icons/icon-maskable-512.png',
-  'icons/apple-touch-icon.png',
-  'icons/favicon-32.png'
+  'icons/IMG_0921.png',
+  'icons/IMG_0920.png',
+  'icons/IMG_0920.png',
+  'icons/IMG_0923.png',
+  'icons/IMG_0925.png'
 ];
 
 self.addEventListener('install', function (e) {
