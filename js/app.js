@@ -814,7 +814,16 @@
     a.remove();
     setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
   }
+  function zipFileName() {
+    var el = $('zipNameInput');
+    var raw = (el && el.value ? el.value : '').trim()
+      .replace(/[\\/:*?"<>|]/g, '').replace(/\.zip$/i, '').trim();
+    return (raw || ('line-stamps-' + new Date().toISOString().slice(0, 10))) + '.zip';
+  }
   function refreshExport() {
+    if (!$('zipNameInput').value) {
+      $('zipNameInput').value = 'line-stamps-' + new Date().toISOString().slice(0, 10);
+    }
     var sel = $('mainSourceSel');
     var one = $('dlOneSel');
     sel.innerHTML = '';
@@ -1097,17 +1106,17 @@
     });
     $('dlZipBtn').addEventListener('click', function () {
       buildZip().then(function (blob) {
-        download(blob, 'line-stamps.zip');
+        download(blob, zipFileName());
         toast('ZIPを作成しました');
       });
     });
     $('shareZipBtn').addEventListener('click', function () {
       buildZip().then(function (blob) {
-        var file = new File([blob], 'line-stamps.zip', { type: 'application/zip' });
+        var file = new File([blob], zipFileName(), { type: 'application/zip' });
         if (navigator.canShare && navigator.canShare({ files: [file] })) {
           navigator.share({ files: [file] }).catch(function () {});
         } else {
-          download(blob, 'line-stamps.zip');
+          download(blob, zipFileName());
           toast('この端末では共有が使えないため、ダウンロードしました');
         }
       });
