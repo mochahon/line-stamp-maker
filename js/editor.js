@@ -62,11 +62,21 @@
     return Math.sqrt(dr * dr + dg * dg + db * db);
   }
 
+  function pixDist(d, o1, o2) {
+    var dr = d[o1] - d[o2], dg = d[o1 + 1] - d[o2 + 1], db = d[o1 + 2] - d[o2 + 2];
+    return Math.sqrt(dr * dr + dg * dg + db * db);
+  }
+
   /**
    * Remove background connected to the image borders.
    * tolerance: 0..100 (mapped to a color-distance threshold).
    * Only border-connected pixels similar to the sampled background color are
-   * made transparent, so same-colored areas inside the character survive.
+   * made transparent. On top of that, pixels sitting on a strong local color
+   * edge (an outline) act as walls: without them the fill leaked through
+   * soft or light outlines and ate same-colored areas inside the art
+   * (white shirts, eye whites, teeth). Pixels that are themselves almost
+   * exactly the background color never become walls, so flat or gently
+   * shaded backgrounds still clear.
    */
   function removeBackground(canvas, tolerance) {
     var w = canvas.width, h = canvas.height;
@@ -75,6 +85,19 @@
     var d = img.data;
     var bg = sampleBackgroundColor(canvas);
     var threshold = 12 + (tolerance / 100) * 140;
+    // Edge barrier map.
+    var barrier = new Uint8Array(w * h);
+    var EDGE = 24;
+    for (var y = 0; y < h; y++) {
+      for (var x = 0; x < w; x++) {
+        var idx = y * w + x;
+        var o = idx * 4;
+        if (d[o + 3] < 10) continue;
+        if (colorDist(d[o], d[o + 1], d[o + 2], bg) <= 8) continue;
+        if (x + 1 < w && pixDist(d, o, o + 4) > EDGE) { barrier[idx] = 1; barrier[idx + 1] = 1; }
+        if (y + 1 < h && pixDist(d, o, o + w * 4) > EDGE) { barrier[idx] = 1; barrier[idx + w] = 1; }
+      }
+    }
     var visited = new Uint8Array(w * h);
     var stack = [];
     function tryPush(x, y) {
@@ -83,7 +106,8 @@
       if (visited[idx]) return;
       visited[idx] = 1;
       var o = idx * 4;
-      if (d[o + 3] < 10 || colorDist(d[o], d[o + 1], d[o + 2], bg) <= threshold) stack.push(idx);
+      if (d[o + 3] < 10 ||
+          (!barrier[idx] && colorDist(d[o], d[o + 1], d[o + 2], bg) <= threshold)) stack.push(idx);
     }
     var x, y;
     for (x = 0; x < w; x++) { tryPush(x, 0); tryPush(x, h - 1); }
