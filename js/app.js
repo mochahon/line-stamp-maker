@@ -1104,6 +1104,20 @@
         download(b, String(i + 1).padStart(2, '0') + '.png');
       });
     });
+    $('shareOneBtn').addEventListener('click', function () {
+      var i = Number($('dlOneSel').value);
+      if (!state.stamps[i]) { toast('スタンプがありません'); return; }
+      var name = String(i + 1).padStart(2, '0') + '.png';
+      canvasToBlob(compose(state.stamps[i])).then(function (b) {
+        var file = new File([b], name, { type: 'image/png' });
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          navigator.share({ files: [file] }).catch(function () {});
+        } else {
+          download(b, name);
+          toast('この端末では共有が使えないため、ダウンロードしました');
+        }
+      });
+    });
     $('dlZipBtn').addEventListener('click', function () {
       buildZip().then(function (blob) {
         download(blob, zipFileName());
